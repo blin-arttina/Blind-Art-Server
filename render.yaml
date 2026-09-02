@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: blind-art-server
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
