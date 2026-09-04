@@ -5,3 +5,6 @@ __pycache__/
 venv/
 *.egg-info/
 .DS_Store
+
+# Duplicate downloads (e.g. 'script (1).sh') — clean these up, don't commit them
+* ([0-9]*).sh
