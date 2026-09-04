@@ -7,6 +7,8 @@ confirm the health check works. Nothing else is wired up yet.
 
 from fastapi import FastAPI
 from server.main.config import get_settings
+from server.main.database import engine, Base
+from server.main import models  # noqa: F401  (registers models with Base)
 
 settings = get_settings()
 
@@ -30,3 +32,18 @@ def root():
 def health_check():
     """First success test target: this must return 200 OK."""
     return {"status": "ok"}
+
+
+# Create tables on startup (Phase 2: minimal setup, no migrations yet)
+Base.metadata.create_all(bind=engine)
+
+
+@app.get("/api/db-health")
+def db_health_check():
+    """Confirms the app can talk to the database."""
+    try:
+        with engine.connect() as conn:
+            conn.exec_driver_sql("SELECT 1")
+        return {"status": "ok", "database": "connected"}
+    except Exception as e:
+        return {"status": "error", "database": "unreachable", "detail": str(e)}
