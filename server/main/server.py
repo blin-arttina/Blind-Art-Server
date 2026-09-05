@@ -9,6 +9,11 @@ from fastapi import FastAPI
 from server.main.config import get_settings
 from server.main.database import engine, Base
 from server.main import models  # noqa: F401  (registers models with Base)
+from sqlalchemy.orm import Session
+from fastapi import Depends, HTTPException, status
+from server.main.database import get_db
+from server.main.schemas import SignupRequest, LoginRequest, TokenResponse, UserResponse
+from server.main.auth import hash_password, verify_password, create_access_token, get_current_user
 
 settings = get_settings()
 
@@ -47,3 +52,33 @@ def db_health_check():
         return {"status": "ok", "database": "connected"}
     except Exception as e:
         return {"status": "error", "database": "unreachable", "detail": str(e)}
+
+
+@app.post("/api/auth/signup", response_model=TokenResponse)
+def signup(payload: SignupRequest, db: Session = Depends(get_db)):
+    existing = db.query(models.User).filter(models.User.email == payload.email).first()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+
+    user = models.User(email=payload.email, password_hash=hash_password(payload.password))
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    token = create_access_token(user.id)
+    return TokenResponse(access_token=token)
+
+
+@app.post("/api/auth/login", response_model=TokenResponse)
+def login(payload: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == payload.email).first()
+    if not user or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+
+    token = create_access_token(user.id)
+    return TokenResponse(access_token=token)
+
+
+@app.get("/api/auth/me", response_model=UserResponse)
+def get_me(current_user: models.User = Depends(get_current_user)):
+    return current_user

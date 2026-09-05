@@ -16,6 +16,7 @@ class Settings:
         self.port = int(os.getenv("PORT", "8000"))
         # Placeholder for Phase 2 — not used yet.
         self.database_url = os.getenv("DATABASE_URL", "")
+        self.jwt_secret_key = os.getenv("JWT_SECRET_KEY", "dev-only-insecure-secret-change-me")
 
 
 @lru_cache
